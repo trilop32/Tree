@@ -35,7 +35,7 @@ public:
         Node* y = nullptr;
         Node* x = root;
 
-        while (x != TNULL) {
+        while (x != nullptr && x != TNULL) {
             y = x;
             if (newNode->value < x->value)
                 x = x->left;
@@ -57,7 +57,7 @@ public:
 
     // Поиск элемента в дереве
     Node* search(Node* node, int key) {
-        if (node == TNULL || node->value == key)
+        if (node == nullptr || node == TNULL || node->value == key)
             return node;
 
         if (key < node->value)
@@ -77,7 +77,7 @@ public:
 
     // Функция для вывода дерева в порядке возрастания
     void printInOrder(Node* node) {
-        if (node != TNULL) {
+        if (node != TNULL && node != nullptr) {
             printInOrder(node->left);
             cout << node->value << " ";
             printInOrder(node->right);
@@ -96,7 +96,7 @@ private:
     // Функция для балансировки дерева после вставки
     void insertFix(Node* k) {
         Node* u;
-        while (k->parent->isRed) {
+        while (k->parent != nullptr && k->parent->isRed) {
             if (k->parent == k->parent->parent->right) {
                 u = k->parent->parent->left;
                 if (u->isRed) {
@@ -179,6 +179,8 @@ private:
 };
 
 int main() {
+    setlocale(LC_ALL, "Russian");
+    srand(time(NULL));
     RedBlackTree tree;
     int n = 1000;  // Количество случайных чисел
 
