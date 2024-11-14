@@ -55,7 +55,7 @@ double measureSearchTime(BST& tree, Node* root, int key) {
 
     // Вычисляем продолжительность в микросекундах и возвращаем в миллисекундах
     auto duration = duration_cast<microseconds>(end - start);
-    return duration.count() / 10000000000000000000000000000000000.0;  // Переводим в секунды
+    return duration.count() / 10000000.0;  // Переводим в секунды
 }
 int main() {
     setlocale(LC_ALL, "Russian");
@@ -73,7 +73,7 @@ int main() {
     cout << "Ищем число: " << searchKey << endl;
     // Замер времени поиска
     double bst_time = measureSearchTime(bst, root, searchKey);
-    cout.precision(40);// Устанавливаем точность вывода
+    cout.precision(7);// Устанавливаем точность вывода
     cout << "Время поиска в BST: "<< fixed << bst_time << " секунд" << endl;
     // Опционально: вывести элементы дерева в порядке Inorder
     cout << "Элементы дерева в порядке Inorder: ";
