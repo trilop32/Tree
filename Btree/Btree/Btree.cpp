@@ -1,180 +1,146 @@
 ﻿#include <iostream>
 #include <vector>
-#include <cstdlib>
+#include <algorithm>
 #include <ctime>
 
 using namespace std;
 
-// Структура для представления узла B-дерева
-class BTreeNode {
-public:
-    vector<int> keys;  // Массив ключей
-    vector<BTreeNode*> children;  // Массив указателей на дочерние узлы
-    bool isLeaf;  // Флаг, указывающий, является ли узел листом
-    int t;  // Порядок дерева (минимальное количество ключей в узле)
+// Структура узла B-дерева
+template <typename T>
+struct BTreeNode {
+    vector<T> keys;         // Вектор ключей
+    vector<BTreeNode*> children; // Вектор дочерних узлов
+    bool isLeaf;           // Флаг, указывающий, является ли узел листом
+    int minDegree;         // Минимальная степень (минимальное количество ключей)
 
-    BTreeNode(int t, bool isLeaf);  // Конструктор для создания узла
+    // Конструктор узла
+    BTreeNode(int t, bool leaf) : minDegree(t), isLeaf(leaf) {}
 };
 
-// Конструктор узла
-BTreeNode::BTreeNode(int t, bool isLeaf) {
-    this->t = t;
-    this->isLeaf = isLeaf;
-    keys.resize(2 * t - 1);  // Максимальное количество ключей в узле
-    children.resize(2 * t);  // Максимальное количество детей
-}
-
-// Класс для B-дерева
+// Класс B-дерева
+template <typename T>
 class BTree {
-public:
-    BTreeNode* root;  // Корень дерева
-    int t;  // Порядок дерева
-
-    BTree(int t);  // Конструктор
-    void insert(int key);  // Вставка нового ключа
-    void traverse();  // Обход дерева
-    void print(BTreeNode* node, int level);  // Печать дерева
-
 private:
-    void insertNonFull(BTreeNode* node, int key);  // Вставка в неполный узел
-    void splitChild(BTreeNode* parent, int i, BTreeNode* child);  // Разделение узла
-    void traverse(BTreeNode* node);  // Рекурсивный обход дерева
-};
+    BTreeNode<T>* root;   // Корень дерева
+public:
+    BTree(int t) : root(nullptr), minDegree(t) {}
 
-// Конструктор BTree
-BTree::BTree(int t) {
-    root = new BTreeNode(t, true);  // Создаем корень как лист
-    this->t = t;
-}
-
-// Вставка нового ключа в B-дерево
-void BTree::insert(int key) {
-    if (root->keys.size() == 2 * t - 1) {  // Если корень полон
-        BTreeNode* newRoot = new BTreeNode(t, false);  // Создаем новый корень
-        newRoot->children[0] = root;  // Старая корневая страница становится дочерним элементом нового корня
-        splitChild(newRoot, 0, root);  // Разделяем старый корень
-        root = newRoot;  // Новый корень
+    void traverse() {
+        if (root != nullptr)
+            traverse(root);
+        cout << endl;
     }
-    insertNonFull(root, key);  // Вставляем в неполный узел
-}
 
-// Вставка в неполный узел
-void BTree::insertNonFull(BTreeNode* node, int key) {
-    int i = node->keys.size() - 1;
-
-    if (node->isLeaf) {
-        while (i >= 0 && key < node->keys[i]) {
-            i--;
+    void insert(T key) {
+        if (root == nullptr) {  // Если дерево пустое, создаем корень
+            root = new BTreeNode<T>(minDegree, true);
+            root->keys.push_back(key); // Добавляем ключ в корень
         }
-        node->keys.insert(node->keys.begin() + i + 1, key);  // Вставляем ключ
-    }
-    else {
-        while (i >= 0 && key < node->keys[i]) {
-            i--;
-        }
-        i++;  // Увеличиваем индекс, так как вставка будет после i-го элемента
-        if (node->children[i]->keys.size() == 2 * t - 1) {  // Если дочерний узел полон
-            splitChild(node, i, node->children[i]);  // Разделяем дочерний узел
-            if (key > node->keys[i]) {
-                i++;
+        else {  // Если дерево не пустое, вставляем ключ в подходящее место
+            if (root->keys.size() == 2 * minDegree - 1) { // Если корень заполнен
+                auto newRoot = new BTreeNode<T>(minDegree, false);
+                newRoot->children.push_back(root);
+                splitChild(newRoot, 0);
+                int i = 0;
+                if (newRoot->keys[0] < key)
+                    i++;
+                insertNonFull(newRoot->children[i], key);
+                root = newRoot;
+            }
+            else {
+                insertNonFull(root, key);
             }
         }
-        insertNonFull(node->children[i], key);  // Рекурсивно вставляем в дочерний узел
     }
-}
 
-// Разделение дочернего узла
-void BTree::splitChild(BTreeNode* parent, int i, BTreeNode* child) {
-    BTreeNode* newChild = new BTreeNode(t, child->isLeaf);
-    parent->children.insert(parent->children.begin() + i + 1, newChild);
-    parent->keys.insert(parent->keys.begin() + i, child->keys[t - 1]);
+private:
+    int minDegree;
+    void splitChild(BTreeNode<T>* parent, int index) {
+        auto child = parent->children[index];
 
-    newChild->keys.assign(child->keys.begin() + t, child->keys.end());  // Переносим половину ключей в новый узел
-    child->keys.resize(t - 1);  // Убираем перемещенные ключи из старого узла
-
-    if (!child->isLeaf) {
-        newChild->children.assign(child->children.begin() + t, child->children.end());  // Переносим дочерние узлы
-        child->children.resize(t);  // Убираем перенесенные дочерние узлы
-    }
-}
-
-// Рекурсивный обход дерева
-void BTree::traverse(BTreeNode* node) {
-    int i;
-    for (i = 0; i < node->keys.size(); i++) {
-        if (!node->isLeaf) {
-            traverse(node->children[i]);
+        // Проверяем, достаточно ли ключей у дочернего узла для разделения
+        if (child->keys.size() < minDegree) {
+            throw std::runtime_error("Недостаточно ключей для разделения узла.");
         }
-        cout << node->keys[i] << " ";  // Выводим ключ
+
+        auto newChild = new BTreeNode<T>(child->minDegree, child->isLeaf);
+
+        // Переносим ключи из старого узла в новый
+        for (int j = 0; j < minDegree - 1; j++) {
+            newChild->keys.push_back(child->keys[j + minDegree]);
+        }
+
+        // Если узел не является листом, переносим дочерние узлы
+        if (!child->isLeaf) {
+            for (int j = 0; j < minDegree; j++) {
+                newChild->children.push_back(child->children[j + minDegree]);
+            }
+        }
+
+        // Обрезаем старый узел
+        child->keys.resize(minDegree - 1);
+
+        // Вставляем новый дочерний узел в родительский
+        parent->children.insert(parent->children.begin() + index + 1, newChild);
+
+        // Вставляем "подъем" ключа в родительский узел
+        parent->keys.insert(parent->keys.begin() + index, child->keys[minDegree - 1]);
     }
+    void insertNonFull(BTreeNode<T>* node, T key) {
+        int i = node->keys.size() - 1;
 
-    if (!node->isLeaf) {
-        traverse(node->children[i]);
-    }
-}
+        if (node->isLeaf) {
+            node->keys.push_back(0);
+            while (i >= 0 && node->keys[i] > key) {
+                node->keys[i + 1] = node->keys[i];
+                i--;
+            }
+            node->keys[i + 1] = key;
+        }
+        else {
+            while (i >= 0 && node->keys[i] > key)
+                i--;
 
-// Обход дерева
-void BTree::traverse() {
-    traverse(root);  // Запускаем рекурсивный обход с корня
-}
+            if (node->children[i + 1]->keys.size() == 2 * minDegree - 1) {
+                splitChild(node, i + 1);
 
-// Печать дерева
-void BTree::print(BTreeNode* node, int level) {
-    if (node == nullptr) return;
-    cout << "Level " << level << ": ";
-    for (int i = 0; i < node->keys.size(); i++) {
-        cout << node->keys[i] << " ";
-    }
-    cout << endl;
+                if (node->keys[i + 1] < key)
+                    i++;
+            }
 
-    if (!node->isLeaf) {
-        for (int i = 0; i <= node->keys.size(); i++) {
-            print(node->children[i], level + 1);
+            insertNonFull(node->children[i + 1], key);
         }
     }
-}
+
+    void traverse(BTreeNode<T>* node) {
+        for (size_t i = 0; i < node->keys.size(); ++i) {
+            if (!node->isLeaf)
+                traverse(node->children[i]);
+
+            cout << node->keys[i] << " ";
+        }
+
+        if (!node->isLeaf)
+            traverse(node->children[node->keys.size()]);
+    }
+};
 
 int main() {
-    srand(time(0));
+    const int numElements = 1000;
 
-    BTree tree(3);  // Создаем B-дерево порядка 3
+    // Инициализируем генератор случайных чисел.
+    srand(static_cast<unsigned>(time(0)));
 
-    // Вставка случайных чисел
-    for (int i = 0; i < 1000; i++) {
-        int num = rand() % 10000 + 1;  // Генерация случайного числа от 1 до 10000
-        tree.insert(num);  // Вставка числа в дерево
+    BTree<int> btree(3);
+
+    // Генерация и вставка случайных элементов в B-дерево.
+    for (int i = 0; i < numElements; ++i) {
+        int randomValue = rand() % numElements;
+        btree.insert(randomValue);
     }
 
-    // Печать дерева (по уровням)
-    cout << "Дерево после вставки 1000 случайных чисел:" << endl;
-    tree.print(tree.root, 0);
-    cout << endl;
-
-    // Обход дерева и вывод всех элементов
-    cout << "Все числа в дереве (обход в порядке возрастания):" << endl;
-    tree.traverse();
-    cout << endl;
+    cout << "Элементы в B-дереве: ";
+    btree.traverse();
 
     return 0;
 }
-/*
-### Объяснение кода :
-
-1. * *Конструктор BTreeNode * *:
-    -Этот конструктор создает новый узел с определенным порядком \(t \), который указывает минимальное количество ключей в узле.
-    - Мы задаем размер массивов для ключей и детей.Количество ключей в узле — это \(2t - 1 \), а количество детей — \(2t \).
-
-    2. * *Класс BTree * *:
--Этот класс представляет B - дерево.Мы используем указатель на корень дерева и порядок дерева \(t \).
-
-3. * *Вставка ключа * *:
--Если корень полон, создается новый корень, и старый корень разделяется.Новый корень будет иметь два дочерних узла.
-- Вставка в неполный узел — ключ вставляется в правильное место, если узел является листом.Если это не лист, то мы рекурсивно ищем подходящее место в поддереве.
-
-4. * *Разделение узла * *:
-    -Когда дочерний узел полон, его необходимо разделить, и новый ключ перемещается в родительский узел.
-
-    5. * *Обход дерева и печать * *:
-    -Мы используем рекурсивный обход дерева и выводим все элементы в порядке возрастания.
-    - Функция `print` помогает нам вывести дерево по уровням, чтобы лучше визуализировать структуру.
-*/
